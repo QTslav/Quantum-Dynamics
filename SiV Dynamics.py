@@ -67,12 +67,16 @@ N_spins = 2
 spins = []
 for i in range(N_spins):
     spins.append(basis(N_spins,i))                                          
-    
+
+s_x = spins[0]*spins[1].dag() + spins[1]*spins[0].dag()
+s_y = -1j*spins[0]*spins[1].dag() + 1j*spins[1]*spins[0].dag()
+s_z = spins[0]*spins[0].dag() - spins[1]*spins[1].dag()
+
 N = N_orbs*N_spins
 
 '''System Dynamics:
--Orbital part:'''
-H = np.zeros((N,N))
+Orbital part comprising Spin-Orbit, Jahn Teller, Zeeman and Strain couplin
+'''
 HOrb = np.zeros((N_orbs,N_orbs), dtype=complex)
 HOrb[2,2] = 1.68*e/h
 HOrb[3,3] = 1.68*e/h
@@ -80,71 +84,68 @@ HOrb[3,3] = 1.68*e/h
 #SO-Coupling
 SO_g = 46e9
 SO_e = 250e9
-print(-(SO_g/2)*1j)
-HOrb[0,1] = -(SO_g/2)*1j
-HOrb[1,0] = (SO_g/2)*1j
-HOrb[2,3] = -(SO_e/2)*1j
-HOrb[3,2] = (SO_e/2)*1j
+HOrb = Qobj(np.zeros((N_orbs, N_orbs)))
+HOrb += -(SO_g/2)*1j*orb[0]*orb[1].dag()
+HOrb += (SO_g/2)*1j*orb[1]*orb[0].dag()
+HOrb += -(SO_e/2)*1j*orb[2]*orb[3].dag()
+HOrb += (SO_e/2)*1j*orb[3]*orb[2].dag()
 
-H += tensor(HOrb, qobj())
+H = tensor(HOrb, s_z)
+
 
 #Jahn-Teller-Coupling
 JT_x_g = 0
 JT_x_e = 0
 JT_y_g = 0
 JT_y_e = 0
-HOrb[0,0] = JT_x_g
-HOrb[0,1] = JT_y_g
-HOrb[1,0] = JT_y_g
-HOrb[1,1] = -JT_x_g
-HOrb[2,2] = JT_x_e
-HOrb[2,3] = JT_y_e
-HOrb[3,2] = JT_y_e
-HOrb[3,3] = -JT_x_e
+HOrb = JT_x_g*orb[0]*orb[0].dag()
+HOrb = JT_y_g*orb[0]*orb[1].dag()
+HOrb = JT_y_g*orb[1]*orb[0].dag()
+HOrb = -JT_x_g*orb[1]*orb[1].dag()
+HOrb = JT_x_e*orb[2]*orb[2].dag()
+HOrb = JT_y_e*orb[2]*orb[3].dag()
+HOrb = JT_y_e*orb[3]*orb[2].dag()
+HOrb = -JT_x_e*orb[3]*orb[3].dag()
 
+H += tensor(HOrb, qeye(N_spins))
 #Strain-Coupling
 alpha_g = 0
 beta_g = 0
 alpha_e = 0
 beta_e = 0
-HOrb[0,0] = alpha_g
-HOrb[0,1] = beta_g
-HOrb[1,0] = beta_g
-HOrb[1,1] = -alpha_g
-HOrb[2,2] = alpha_e
-HOrb[2,3] = beta_e
-HOrb[3,2] = beta_e
-HOrb[3,3] = -alpha_e
+HOrb = alpha_g*orb[0]*orb[0].dag()
+HOrb = beta_g*orb[0]*orb[1].dag()
+HOrb = beta_g*orb[1]*orb[0].dag()
+HOrb = -alpha_g*orb[1]*orb[1].dag()
+HOrb = alpha_e*orb[2]*orb[2].dag()
+HOrb = beta_e*orb[2]*orb[3].dag()
+HOrb = beta_e*orb[3]*orb[2].dag()
+HOrb = -alpha_e*orb[3]*orb[3].dag()
+
+H += tensor(HOrb, qeye(N_spins))
+print(H)
+
 
 #Zeeman-Coupling
-# f = 0.1
-# gamma_S = mu_b/hbar
-# gamma_L = 2*gamma_S
-# B_x = 0
-# B_y = 0
-# B_z = 0
-# H0[0,0] = gamma_S*B_z
-# H0[0,1] = gamma_S*(B_x-B_y*1j)
-# H0[0,2] = f*gamma_L*B_z*1j
-# H0[1,0] = gamma_S*(B_x+B_y*1j)
-# H0[1,1] = -gamma_S*B_z
-# H0[1,3] = f*gamma_L*B_z*1j
-# H0[2,0] = -f*gamma_L*B_z*1j
-# H0[2,2] = gamma_S*B_z
-# H0[2,3] = gamma_S*(B_x-B_y*1j)
-# H0[3,1] = -f*gamma_L*B_z*1j
-# H0[3,2] = gamma_S*(B_x+B_y*1j)
-# H0[3,3] = -gamma_S*B_z*1j
+f = 0.1
+gamma_S = 2*mu_B/hbar
+gamma_L = mu_B/hbar
+B_x = 0
+B_y = 0
+B_z = 0
+H0[0,0] = gamma_S*B_z*orb[0]*orb[0].dag()
+H0[0,1] = gamma_S*(B_x-B_y*1j)*orb[0]*orb[0].dag()
+H0[0,2] = f*gamma_L*B_z*1j*orb[0]*orb[0].dag()
+H0[1,0] = gamma_S*(B_x+B_y*1j)
+H0[1,1] = -gamma_S*B_z
+H0[1,3] = f*gamma_L*B_z*1j
+H0[2,0] = -f*gamma_L*B_z*1j
+H0[2,2] = gamma_S*B_z
+H0[2,3] = gamma_S*(B_x-B_y*1j)
+H0[3,1] = -f*gamma_L*B_z*1j
+H0[3,2] = gamma_S*(B_x+B_y*1j)
+H0[3,3] = -gamma_S*B_z*1j
 
-# nu = np.zeros((N_orbs, N_orbs))
-# nu[0][0] = 0
-# nu[1][1] = 46e9
-# nu[2][2] = c_0/737e-9
-# nu[3][3] = nu[2][2]+250e9
-# nu = nu*norm
-# for i in range(N_orbs):
-#     for j in range(N_orbs):
-#         H0 += nu[i][j]*state[i]*state[j].dag()
 
 # ''' Driving part with rotating frame transformation'''         
 # P = 1e-3
