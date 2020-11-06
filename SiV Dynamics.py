@@ -55,42 +55,56 @@ norm = 1e-9
 mu_B = 14.1e9*h
 
 ''' System variables and operators:
-    -Use arbirtray scaling factor for SiV optical dipole
-    -Estimate for Rabi frequencies (Atom and Quantum Optics, p.186, eq. 5.186)
+    Orbitals ordering
+    0: |e_gx>
+    1: |e_gy>
+    2: |e_ux>
+    3: |e_uy>
+
+    Therefore orbital plus operator L_p_x = |e_g_y><e_g_x| ... 
+    Due to D3d symmetry only L_z is non-zero. L_x and L_y vanish.
+
+    Define spin up |🠕> as lower energy state.
 '''
 N_orbs = 4 
-orb = []
-for i in range(N_orbs):
-    orb.append(basis(N_orbs,i))                                          
+e_g_x = basis(N_orbs, 0)
+e_g_y = basis(N_orbs, 1)
+e_u_x = basis(N_orbs, 2)
+e_u_y = basis(N_orbs, 3)
+L_p_g = e_g_y*e_g_x.dag()
+L_m_g = L_p_g.trans()
+L_p_e = e_u_y*e_u_x.dag()
+L_m_e = L_p_e.trans()
+L_z_g = hbar*(1j*L_m_g-1j*L_p_g)
+L_z_e = hbar*(1j*L_m_e-1j*L_p_e)
 
 N_spins = 2
-spins = []
-for i in range(N_spins):
-    spins.append(basis(N_spins,i))                                          
+s_up = basis(N_spins,0)
+s_down = basis(N_spins,1)
 
-s_x = spins[0]*spins[1].dag() + spins[1]*spins[0].dag()
-s_y = -1j*spins[0]*spins[1].dag() + 1j*spins[1]*spins[0].dag()
-s_z = spins[0]*spins[0].dag() - spins[1]*spins[1].dag()
+S_m = s_up*s_down.dag()
+S_p = s_down*s_up.dag()
+S_x = hbar/2*(S_m + S_p)
+S_y = -1j*S_m + 1j*S_p
+S_z = s_down*s_down.dag() - s_up*s_up.dag()
 
 N = N_orbs*N_spins
 
 '''System Dynamics:
 Orbital part comprising Spin-Orbit, Jahn Teller, Zeeman and Strain couplin
 '''
-HOrb = np.zeros((N_orbs,N_orbs), dtype=complex)
-HOrb[2,2] = 1.68*e/h
-HOrb[3,3] = 1.68*e/h
+HOrb = Qobj(np.zeros((N_orbs, N_orbs)))
+HOrb += 1.68*e/h*(e_u_x*e_u_x.dag()+e_u_y*e_u_y.dag())
 
 #SO-Coupling
 SO_g = 46e9
 SO_e = 250e9
-HOrb = Qobj(np.zeros((N_orbs, N_orbs)))
-HOrb += -(SO_g/2)*1j*orb[0]*orb[1].dag()
-HOrb += (SO_g/2)*1j*orb[1]*orb[0].dag()
-HOrb += -(SO_e/2)*1j*orb[2]*orb[3].dag()
-HOrb += (SO_e/2)*1j*orb[3]*orb[2].dag()
-
-H = tensor(HOrb, s_z)
+HOrb += -(SO_g/2)*1j*e_g_x*e_g_y.dag()
+HOrb += (SO_g/2)*1j*e_g_y*e_g_x.dag()
+HOrb += -(SO_e/2)*1j*e_u_x*e_u_y.dag()
+HOrb += (SO_e/2)*1j*e_u_y*e_u_x.dag()
+H = tensor(HOrb, S_z)
+print(H)
 
 
 #Jahn-Teller-Coupling
@@ -98,14 +112,14 @@ JT_x_g = 0
 JT_x_e = 0
 JT_y_g = 0
 JT_y_e = 0
-HOrb = JT_x_g*orb[0]*orb[0].dag()
-HOrb = JT_y_g*orb[0]*orb[1].dag()
-HOrb = JT_y_g*orb[1]*orb[0].dag()
-HOrb = -JT_x_g*orb[1]*orb[1].dag()
-HOrb = JT_x_e*orb[2]*orb[2].dag()
-HOrb = JT_y_e*orb[2]*orb[3].dag()
-HOrb = JT_y_e*orb[3]*orb[2].dag()
-HOrb = -JT_x_e*orb[3]*orb[3].dag()
+HOrb = JT_x_g*e_g_x*e_g_x.dag()
+HOrb = JT_y_g*e_g_x*e_g_y.dag()
+HOrb = JT_y_g*e_g_y*e_g_x.dag()
+HOrb = -JT_x_g*e_g_y*e_g_y.dag()
+HOrb = JT_x_e*e_u_x*e_u_x.dag()
+HOrb = JT_y_e*e_u_x*e_u_y.dag()
+HOrb = JT_y_e*e_u_y*e_u_x.dag()
+HOrb = -JT_x_e*e_u_y*e_u_y.dag()
 
 H += tensor(HOrb, qeye(N_spins))
 #Strain-Coupling
@@ -113,14 +127,14 @@ alpha_g = 0
 beta_g = 0
 alpha_e = 0
 beta_e = 0
-HOrb = alpha_g*orb[0]*orb[0].dag()
-HOrb = beta_g*orb[0]*orb[1].dag()
-HOrb = beta_g*orb[1]*orb[0].dag()
-HOrb = -alpha_g*orb[1]*orb[1].dag()
-HOrb = alpha_e*orb[2]*orb[2].dag()
-HOrb = beta_e*orb[2]*orb[3].dag()
-HOrb = beta_e*orb[3]*orb[2].dag()
-HOrb = -alpha_e*orb[3]*orb[3].dag()
+HOrb = alpha_g*e_g_x*e_g_x.dag()
+HOrb = beta_g*e_g_x*e_g_y.dag()
+HOrb = beta_g*e_g_y*e_g_x.dag()
+HOrb = -alpha_g*e_g_y*e_g_y.dag()
+HOrb = alpha_e*e_u_x*e_u_x.dag()
+HOrb = beta_e*e_u_x*e_u_y.dag()
+HOrb = beta_e*e_u_y*e_u_x.dag()
+HOrb = -alpha_e*e_u_y*e_u_y.dag()
 
 H += tensor(HOrb, qeye(N_spins))
 print(H)
@@ -133,9 +147,12 @@ gamma_L = mu_B/hbar
 B_x = 0
 B_y = 0
 B_z = 0
-H0[0,0] = gamma_S*B_z*orb[0]*orb[0].dag()
-H0[0,1] = gamma_S*(B_x-B_y*1j)*orb[0]*orb[0].dag()
-H0[0,2] = f*gamma_L*B_z*1j*orb[0]*orb[0].dag()
+
+
+
+H0[0,0] = gamma_S*B_z*e_g_x*e_g_y.dag()
+H0[0,1] = gamma_S*(B_x-B_y*1j)*e_g_x*e_g_x.dag()
+H0[0,2] = f*gamma_L*B_z*1j*e_g_x*e_g_x.dag()
 H0[1,0] = gamma_S*(B_x+B_y*1j)
 H0[1,1] = -gamma_S*B_z
 H0[1,3] = f*gamma_L*B_z*1j
