@@ -2,6 +2,7 @@ from qutip import *
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc
+# rc('text', usetex=True)
 
 ''' 
 System parameters:
@@ -43,18 +44,21 @@ System parameters:
         H_SO:               Spin-orbit interaction
         H_Strain:           Crystal strain
 '''
+
 # Constants
-hbar = 1.054e-34
-h = hbar*2*np.pi
+h = 6.602e-34
+hbar = h/(2*np.pi)
 kB = 1.38e-23
 eps_0 = 8.85e-12
 c_0 = 299792458
 e = 1.602e-19
+m_e = 9.109e-31
 a_0 = 0.53e-10
 norm = 1e-9
-mu_B = 14.1e9*h
+mu_B = e*hbar/(2*m_e)
 
-''' System variables and operators:
+''' 
+    States annd operators:
     Orbitals ordering
     0: |e_gx>
     1: |e_gy>
@@ -66,6 +70,25 @@ mu_B = 14.1e9*h
 
     Define spin up |🠕> as lower energy state.
 '''
+labels = [
+    '|e_g_x, 🠕>',
+    '|e_g_x, 🠗>',
+    '|e_g_y, 🠕>',
+    '|e_g_y, 🠗>',
+    '|e_u_x, 🠕>',
+    '|e_u_x, 🠗>',
+    '|e_u_y, 🠕>',
+    '|e_u_y, 🠗>']
+colors = [
+    'k',
+    'r',
+    'k',
+    'r',
+    'b',
+    'y',
+    'b',
+    'y'
+]
 N_orbs = 4 
 e_g_x = basis(N_orbs, 0)
 e_g_y = basis(N_orbs, 1)
@@ -75,93 +98,117 @@ L_p_g = e_g_y*e_g_x.dag()
 L_m_g = L_p_g.trans()
 L_p_e = e_u_y*e_u_x.dag()
 L_m_e = L_p_e.trans()
-L_z_g = hbar*(1j*L_m_g-1j*L_p_g)
-L_z_e = hbar*(1j*L_m_e-1j*L_p_e)
+L_z_g = (1j*L_m_g-1j*L_p_g)
+L_z_e = (1j*L_m_e-1j*L_p_e)
 
 N_spins = 2
-s_up = basis(N_spins,0)
-s_down = basis(N_spins,1)
-
-S_m = s_up*s_down.dag()
-S_p = s_down*s_up.dag()
-S_x = hbar/2*(S_m + S_p)
-S_y = -1j*S_m + 1j*S_p
-S_z = s_down*s_down.dag() - s_up*s_up.dag()
-
+s_down = basis(N_spins,0)
+s_up = basis(N_spins,1)
+S_m = s_down*s_up.dag()
+S_p = s_up*s_down.dag()
+S_x = 1/2*(S_m + S_p)
+S_y = 1/2*(-1j*S_m + 1j*S_p)
+S_z = 1/2*(s_down*s_down.dag() - s_up*s_up.dag())
 N = N_orbs*N_spins
+
 
 '''System Dynamics:
 Orbital part comprising Spin-Orbit, Jahn Teller, Zeeman and Strain couplin
 '''
 HOrb = Qobj(np.zeros((N_orbs, N_orbs)))
 HOrb += 1.68*e/h*(e_u_x*e_u_x.dag()+e_u_y*e_u_y.dag())
+H = tensor(HOrb, qeye(N_spins))
 
 #SO-Coupling
-SO_g = 46e9
-SO_e = 250e9
-HOrb += -(SO_g/2)*1j*e_g_x*e_g_y.dag()
-HOrb += (SO_g/2)*1j*e_g_y*e_g_x.dag()
-HOrb += -(SO_e/2)*1j*e_u_x*e_u_y.dag()
-HOrb += (SO_e/2)*1j*e_u_y*e_u_x.dag()
-H = tensor(HOrb, S_z)
-print(H)
-
+SO_g = 0*46e9
+SO_e = 0*250e9
+HSO = -SO_g/2*tensor(L_z_g,S_z) - SO_e/2*tensor(L_z_e,S_z)
+H += HSO
 
 #Jahn-Teller-Coupling
 JT_x_g = 0
 JT_x_e = 0
 JT_y_g = 0
 JT_y_e = 0
-HOrb = JT_x_g*e_g_x*e_g_x.dag()
-HOrb = JT_y_g*e_g_x*e_g_y.dag()
-HOrb = JT_y_g*e_g_y*e_g_x.dag()
-HOrb = -JT_x_g*e_g_y*e_g_y.dag()
-HOrb = JT_x_e*e_u_x*e_u_x.dag()
-HOrb = JT_y_e*e_u_x*e_u_y.dag()
-HOrb = JT_y_e*e_u_y*e_u_x.dag()
-HOrb = -JT_x_e*e_u_y*e_u_y.dag()
+HJT = JT_x_g*e_g_x*e_g_x.dag()
+HJT = JT_y_g*e_g_x*e_g_y.dag()
+HJT = JT_y_g*e_g_y*e_g_x.dag()
+HJT = -JT_x_g*e_g_y*e_g_y.dag()
+HJT = JT_x_e*e_u_x*e_u_x.dag()
+HJT = JT_y_e*e_u_x*e_u_y.dag()
+HJT = JT_y_e*e_u_y*e_u_x.dag()
+HJT = -JT_x_e*e_u_y*e_u_y.dag()
+H += tensor(HJT, qeye(N_spins))
 
-H += tensor(HOrb, qeye(N_spins))
 #Strain-Coupling
+delta_g = 0
 alpha_g = 0
 beta_g = 0
+delta_e = 0
 alpha_e = 0
 beta_e = 0
-HOrb = alpha_g*e_g_x*e_g_x.dag()
-HOrb = beta_g*e_g_x*e_g_y.dag()
-HOrb = beta_g*e_g_y*e_g_x.dag()
-HOrb = -alpha_g*e_g_y*e_g_y.dag()
-HOrb = alpha_e*e_u_x*e_u_x.dag()
-HOrb = beta_e*e_u_x*e_u_y.dag()
-HOrb = beta_e*e_u_y*e_u_x.dag()
-HOrb = -alpha_e*e_u_y*e_u_y.dag()
+HStr = (delta_g+alpha_g)*e_g_x*e_g_x.dag()
+HStr = beta_g*e_g_x*e_g_y.dag()
+HStr = beta_g*e_g_y*e_g_x.dag()
+HStr = (delta_g-alpha_g)*e_g_y*e_g_y.dag()
+HStr = (delta_e+alpha_e)*e_u_x*e_u_x.dag()
+HStr = beta_e*e_u_x*e_u_y.dag()
+HStr = beta_e*e_u_y*e_u_x.dag()
+HStr = (delta_e-alpha_e)*e_u_y*e_u_y.dag()
+H += tensor(HStr, qeye(N_spins))
 
-H += tensor(HOrb, qeye(N_spins))
-print(H)
+B = np.linspace(0.0,6,10)
+# theta_B = 54.7/180*np.pi
+# phi_B = 45/180*np.pi
+# R_y = np.array([[np.cos(theta_B),0,np.sin(theta_B)],[0,1,0],[-np.sin(theta_B),0,np.cos(theta_B)]])
+# R_z = np.array([[np.cos(theta_B),-np.sin(theta_B),0],[np.sin(theta_B),np.cos(theta_B),0],[0,0,1]])
+# R = np.linalg.inv(np.matmul(R_y,R_z))
 
+#Internal basis vectors expressed in lab frame 
+x = np.array([-1,1,0])
+x = x/np.linalg.norm(x)
+y = np.array([-1,-1,2])
+y = y/np.linalg.norm(y)
+z = np.array([1,1,1])
+z = z/np.linalg.norm(z)
 
-#Zeeman-Coupling
-f = 0.1
-gamma_S = 2*mu_B/hbar
-gamma_L = mu_B/hbar
-B_x = 0
-B_y = 0
-B_z = 0
+#Rotation matrix to switch from internal to external lab frame
+R_ext_int = np.vstack((x,y,z)).T
+R_int_ext = np.linalg.inv(R_ext_int)
 
+engs = np.zeros((N, len(B)))
+for i, b in enumerate(B):
 
+    #Zeeman-Coupling
+    f = 0.1
+    gamma_S = 2*mu_B/h
+    gamma_L = mu_B/h
+    
+    B_ext = 1/np.sqrt(3)*np.array([[b],[b],[b]])
+    
+    #Rotate into SiV internal coordinate system defined by applying (R_y*R_z)^-1
+    B_x = np.squeeze(R_int_ext @ B_ext)[0]
+    B_y = np.squeeze(R_int_ext @ B_ext)[1]
+    B_z = np.squeeze(R_int_ext @ B_ext)[2]
+    
+    print(gamma_L, f*gamma_L*B_z)
+    HZL = f*gamma_L*B_z*tensor((L_z_g+L_z_e),qeye(N_spins))
+    # HZS = gamma_S*tensor(qeye(N_orbs),(B_x*S_x+B_y*S_y+B_z*S_z))
+    H += HZL 
+    
+    print(H)
+    engs[:,i] = H.eigenenergies()
 
-H0[0,0] = gamma_S*B_z*e_g_x*e_g_y.dag()
-H0[0,1] = gamma_S*(B_x-B_y*1j)*e_g_x*e_g_x.dag()
-H0[0,2] = f*gamma_L*B_z*1j*e_g_x*e_g_x.dag()
-H0[1,0] = gamma_S*(B_x+B_y*1j)
-H0[1,1] = -gamma_S*B_z
-H0[1,3] = f*gamma_L*B_z*1j
-H0[2,0] = -f*gamma_L*B_z*1j
-H0[2,2] = gamma_S*B_z
-H0[2,3] = gamma_S*(B_x-B_y*1j)
-H0[3,1] = -f*gamma_L*B_z*1j
-H0[3,2] = gamma_S*(B_x+B_y*1j)
-H0[3,3] = -gamma_S*B_z*1j
+fig, axs = plt.subplots(2,1,True)
+for i, eng in enumerate(engs):
+    if i<4:
+        axs[1].plot(B, eng, linestyle='-', label=labels[i], color=colors[i])
+    else:
+        axs[0].plot(B, eng-1.68*e/h, linestyle='-', label=labels[i], color=colors[i])
+    
+axs[0].legend()
+axs[1].legend()
+plt.show()
 
 
 # ''' Driving part with rotating frame transformation'''         
