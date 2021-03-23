@@ -365,7 +365,7 @@ if len(tmp_up[0])>0:
     # bins_down = [(bin_edges_down[i]+bin_edges_down[i+1])/2 for i in range(len(bin_edges_down)-1)]
     # axs[1].plot(bins_down, hist_down, color=scan_colors[2])
 
-    span = SpanSelector(axs[1], onselect1, 'horizontal', useblit=True,
+    span = SpanSelector(axs[1], onselect3, 'horizontal', useblit=True,
                     rectprops=dict(alpha=0.5, facecolor='red'))
 # if len(tmp_up[1])>0:
     # hist_up, bin_edges_up = np.histogram(np.array(tmp_up[1]), bins=num_plots*len(tmp_up[1]))
