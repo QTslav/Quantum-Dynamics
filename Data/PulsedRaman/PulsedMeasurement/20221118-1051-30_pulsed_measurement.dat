@@ -1,0 +1,18 @@
+#Saved Data from the class pulsed_measurement_logic on 18.11.2022 at 10h51m30s.
+#
+#Parameters:
+#===========
+#
+#Approx. measurement time (s): 4.1004268169403076e+01
+#Measurement sweeps: -1
+#Number of laser pulses: 2
+#Laser ignore indices: [0]
+#alternating: False
+#analysis parameters: {'signal_start': 5e-08, 'signal_end': 1.08e-06, 'method': 'mean'}
+#extraction parameters: {'conv_std_dev': 1.0, 'method': 'conv_deriv'}
+#fast counter settings: {'bin_width': 1e-08, 'record_length': 1.003e-05, 'number_of_gates': 0, 'is_gated': False}
+#
+#Data:
+#=====
+#Controlled variable(s)	Signal
+2.000000000000000e-06	2.567961165048544e+01

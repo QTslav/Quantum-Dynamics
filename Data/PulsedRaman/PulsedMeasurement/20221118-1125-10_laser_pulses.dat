@@ -1,0 +1,27 @@
+#Saved Data from the class pulsed_measurement_logic on 18.11.2022 at 11h25m10s.
+#
+#Parameters:
+#===========
+#
+#bin width (s): 1.0000000000000000e-08
+#record length (s): 1.0030000000000001e-05
+#gated counting: False
+#extraction parameters: {'conv_std_dev': 1.0, 'method': 'conv_deriv'}
+#
+#Data:
+#=====
+#Signal (counts)
+1	4
+30	33
+51	44
+50	56
+43	30
+45	38
+39	37
+25	40
+34	36
+36	34
+25	23
+27	29
+23	36
+24	31
